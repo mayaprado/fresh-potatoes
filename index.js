@@ -25,15 +25,28 @@ app.get('/films/:id/recommendations', getFilmRecommendations);
 // ROUTE HANDLER
 function getFilmRecommendations(req, res, next) {
   const id = req.params.id;
-  let sql = `SELECT Title title
+  const limit = 10;
+  const offset = 0;
+  let sql = `SELECT *
             FROM films
+            CROSS JOIN genres 
             WHERE films.id = ${id}
-            ORDER BY Title`;
+            ORDER BY films.id`;
 
   db.each(sql, (err, row) => {
   if (err) {
     throw err;
   }
+  const meta = {"limit": limit, "offset": offset};
+  const title = row.title;
+  const film_id = row.id;
+  const releaseDate = row.release_date;
+  const genre = row.name;
+  const averageRating = 0;
+  const reviews = 0;
+  const recommendations = [{"id": film_id, "title": title, "releaseDate": releaseDate, "genre": genre}]
+  res.json({meta, recommendations});
+  // res.json({meta, recommendations});
   console.log(`${row.title}`, id);
   console.log('id is', id);
   });  
