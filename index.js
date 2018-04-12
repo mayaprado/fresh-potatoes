@@ -14,6 +14,8 @@ let db = new sqlite3.Database('./db/database.db', (err) => {
   console.log('Connected to SQlite database.');
 });
 
+const axios = require ('axios');
+
 // START SERVER
 Promise.resolve()
   .then(() => app.listen(PORT, () => console.log(`App listening on port ${PORT}`)))
@@ -25,8 +27,9 @@ app.get('/films/:id/recommendations', getFilmRecommendations);
 // ROUTE HANDLER
 function getFilmRecommendations(req, res, next) {
   const id = req.params.id;
-  const limit = 10;
-  const offset = 0;
+  const limit = req.query.limit || 10;
+  const offset = req.query.offset || 10;
+  var film_info = {};
   let sql = `SELECT *
             FROM films
             CROSS JOIN genres 
@@ -44,12 +47,22 @@ function getFilmRecommendations(req, res, next) {
   const genre = row.name;
   const averageRating = 0;
   const reviews = 0;
-  const recommendations = [{"id": film_id, "title": title, "releaseDate": releaseDate, "genre": genre}]
-  res.json({meta, recommendations});
-  // res.json({meta, recommendations});
-  console.log(`${row.title}`, id);
-  console.log('id is', id);
+  film_info = {"id": film_id, "title": title, "releaseDate": releaseDate, "genre": genre};
+  res.send({film_info});
   });  
+
+  axios({
+    method: 'get',
+    url: `http://credentials-api.generalassemb.ly/4576f55f-c427-4cfc-a11c-5bfe914ca6c1?films=8`
+  })
+    .then(resp => {
+      res.json(resp.data);
+      next();
+    })
+    .catch(error => {
+      console.log('error encountered in axios call error: ', error);
+      next(error);
+    });
 }
 
 module.exports = app;
