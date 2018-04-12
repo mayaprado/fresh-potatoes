@@ -29,40 +29,95 @@ function getFilmRecommendations(req, res, next) {
   const id = req.params.id;
   const limit = req.query.limit || 10;
   const offset = req.query.offset || 10;
-  var film_info = {};
-  let sql = `SELECT *
+  const meta = {"limit": limit, "offset": offset};
+  // var film_info = {};
+  var recommendation_ids = [];
+  let sql = `SELECT id
             FROM films
-            CROSS JOIN genres 
-            WHERE films.id = ${id}
-            ORDER BY films.id`;
+            WHERE genre_id IN (SELECT genre_id
+            FROM films
+            WHERE id = ${id})`;
+
+
+  // let sql2 = `SELECT *
+  //           FROM films
+  //           CROSS JOIN genres 
+  //           WHERE films.id = ${id}
+  //           ORDER BY films.id`;
 
   db.each(sql, (err, row) => {
   if (err) {
     throw err;
   }
-  const meta = {"limit": limit, "offset": offset};
-  const title = row.title;
-  const film_id = row.id;
-  const releaseDate = row.release_date;
-  const genre = row.name;
-  const averageRating = 0;
-  const reviews = 0;
-  film_info = {"id": film_id, "title": title, "releaseDate": releaseDate, "genre": genre};
-  res.send({film_info});
-  });  
 
-  axios({
-    method: 'get',
-    url: `http://credentials-api.generalassemb.ly/4576f55f-c427-4cfc-a11c-5bfe914ca6c1?films=8`
-  })
-    .then(resp => {
-      res.json(resp.data);
-      next();
+  recommendation_ids.push(row.id);
+  var recommendations_list = [];
+//   recommendation_ids.map(el => {
+//     axios({
+//       method: 'get',
+//       url: `http://credentials-api.generalassemb.ly/4576f55f-c427-4cfc-a11c-5bfe914ca6c1?films=${el}`
+//     })
+//       .then(resp => {
+//         // res.json(resp.data);
+//         reviews = resp.data[0].reviews;
+//         var ratings = [];
+//         reviews.map(el => ratings.push(el.rating));
+//         var sum = ratings.reduce((previous, current) => current += previous);
+//         var averageRating =  Math.round(sum / reviews.length * 100) / 100;
+//         // console.log('averageRating is', averageRating);
+//         if (averageRating > 4 && reviews.length >= 5) {
+//           recommendations_list.push(el);
+//           // console.log('el is', el);
+//         };
+//       // console.log('recom list is', recommendations_list);
+//       res.json(recommendations_list);
+//       next();
+//       })
+//       .catch(error => {
+//          console.log('error encountered in axios call error: ', error);
+//          next(error);
+//       });
+//     })
+//   });
+// }
+  // console.log('recommendation_ids', recommendation_ids);
+  
+  // const title = row.title;
+  // const film_id = row.id;
+  // const releaseDate = row.release_date;
+  // const genre = row.name;
+  // const reviews = 0;
+  // film_info = {"id": film_id, "title": title, "releaseDate": releaseDate, "genre": genre};
+  // }; 
+
+  // var recommendations_list = [];
+  if (recommendation_ids.length > 0){
+    axios({
+      method: 'get',
+      url: `http://credentials-api.generalassemb.ly/4576f55f-c427-4cfc-a11c-5bfe914ca6c1?films=${recommendation_ids}`
     })
-    .catch(error => {
-      console.log('error encountered in axios call error: ', error);
-      next(error);
-    });
-}
+      .then(resp => {
+        resp.data.map(el => {
+          reviews = el.reviews;
+          var ratings = [];
+          reviews.map(el => ratings.push(el.rating));
+          if (ratings.length > 0) {
+          var sum = ratings.reduce((previous, current) => current += previous);
+          var averageRating =  Math.round(sum / reviews.length * 100) / 100;
+            if (averageRating > 4 && reviews.length >= 5) {
+              recommendations_list.push(el.film_id);
+            };
+          };
+        })
+        console.log("recommendations_list is", recommendations_list);
+        next();
+      })
+      .catch(error => {
+        console.log('error encountered in axios call error: ', error);
+        next(error);
+      });
+    }
+  });
+};
 
 module.exports = app;
